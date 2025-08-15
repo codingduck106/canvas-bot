@@ -15,6 +15,7 @@ CHANNEL_ID = int(str(os.getenv("CHANNEL_ID")))   # Discord channel ID to post in
 
 # Discord bot setup
 intents = discord.Intents.default()
+intents.message_content = True  # This is the important part
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Fetch assignments from Canvas
@@ -79,5 +80,6 @@ async def on_ready():
     daily_reminder.start()
 
 bot.run(DISCORD_TOKEN) # type: ignore
+
 
 
