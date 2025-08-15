@@ -1,9 +1,23 @@
-import os
 import requests
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import threading, os
+from flask import Flask
+
+app = Flask("keepalive")
+
+@app.route("/")
+def home():
+    return "Bot is running!"
+
+def run():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
+threading.Thread(target=run).start()
+
 
 # Load secrets from .env
 
@@ -80,6 +94,7 @@ async def on_ready():
     daily_reminder.start()
 
 bot.run(DISCORD_TOKEN) # type: ignore
+
 
 
 
