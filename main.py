@@ -6,8 +6,16 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 # Load secrets from .env
+
+def caesar_decrypt(text, shift=5):
+    decrypted = ""
+    for char in text:
+        decrypted += chr((ord(char) - shift) % 256)
+    return decrypted
+
+
 load_dotenv()
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+DISCORD_TOKEN = caesar_decrypt(os.getenv("DISCORD_TOKEN"))
 CANVAS_TOKEN = os.getenv("CANVAS_TOKEN")
 CANVAS_DOMAIN = os.getenv("CANVAS_DOMAIN")  # e.g. yourschool.instructure.com
 CHANNEL_ID = int(str(os.getenv("CHANNEL_ID")))   # Discord channel ID to post in
@@ -78,3 +86,4 @@ async def on_ready():
     daily_reminder.start()
 
 bot.run(DISCORD_TOKEN) # type: ignore
+
