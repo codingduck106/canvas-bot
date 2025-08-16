@@ -24,7 +24,6 @@ load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 CANVAS_TOKEN = os.getenv("CANVAS_TOKEN")
 CANVAS_DOMAIN = os.getenv("CANVAS_DOMAIN")  # e.g. yourschool.instructure.com
-CHANNEL_ID = int(str(os.getenv("CHANNEL_ID")))   # Optional: for future use
 
 # ------------------- Discord bot setup -------------------
 intents = discord.Intents.default()
@@ -35,7 +34,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 def get_upcoming_events():
     url = f"https://{CANVAS_DOMAIN}/api/v1/users/self/upcoming_events"
     headers = {
-        "Authorization": f"Bearer {CANVAS_TOKEN.strip()}"  # Strip any accidental whitespace/newlines
+        "Authorization": f"Bearer {CANVAS_TOKEN.strip()}"  # Strip whitespace/newlines
     }
 
     r = requests.get(url, headers=headers)
@@ -44,12 +43,21 @@ def get_upcoming_events():
 
     events = r.json()
     assignments = []
+
     for e in events:
-        due = e.get("start_at")
-        due_fmt = datetime.fromisoformat(due.replace("Z", "+00:00")).strftime(
-            "%Y-%m-%d %H:%M UTC") if due else "No due date"
+        # Event title
         title = e.get("title", "Untitled Event")
-        assignments.append(f"📌 **{title}** — due {due_fmt}")
+        # Course/Class name (context_name)
+        course = e.get("context_name", "Unknown Course")
+        # Due date formatted
+        due = e.get("start_at")
+        if due:
+            due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
+            due_fmt = due_dt.strftime("%B %d, %Y")  # e.g., August 21, 2025
+        else:
+            due_fmt = "No due date"
+
+        assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
 
     return assignments if assignments else ["No upcoming events found."]
 
@@ -66,4 +74,4 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user}")
 
 # ------------------- Run bot -------------------
-bot.run(DISCORD_TOKEN.strip())  # Strip to avoid accidental newline issues
+bot.run(DISCORD_TOKEN.strip())
