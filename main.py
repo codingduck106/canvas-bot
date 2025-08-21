@@ -33,59 +33,48 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ------------------- Fetch upcoming events from Canvas -------------------
 def get_upcoming_events():
-    # first cycle
     url = f"https://{CANVAS_DOMAIN}/api/v1/users/self/upcoming_events"
-    headers = {
-        "Authorization": f"Bearer {CANVAS_TOKEN_1.strip()}"  # Strip whitespace/newlines
-    }
 
-    r = requests.get(url, headers=headers)
-    if r.status_code != 200:
-        return [f"Error {r.status_code}: {r.text}"]
-
-    events = r.json()
     assignments = []
 
-    for e in events:
-        # Event title
+    # --------- First token cycle ---------
+    headers1 = {"Authorization": f"Bearer {CANVAS_TOKEN_1.strip()}"}
+    r1 = requests.get(url, headers=headers1)
+    if r1.status_code != 200:
+        return [f"Error {r1.status_code}: {r1.text}"]
+
+    events1 = r1.json()
+    for e in events1:
         title = e.get("title", "Untitled Event")
-        # Course/Class name (context_name)
         course = e.get("context_name", "Unknown Course")
-        # Due date formatted
         due = e.get("start_at")
         if due:
             due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
-            due_fmt = due_dt.strftime("%B %d, %Y")  # e.g., August 21, 2025
+            due_fmt = due_dt.strftime("%B %d, %Y")
         else:
             due_fmt = "No due date"
-
         assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
 
-    headers2 = {
-        "Authorization": f"Bearer {CANVAS_TOKEN_2.strip()}"
-    }
-
+    # --------- Second token cycle ---------
+    headers2 = {"Authorization": f"Bearer {CANVAS_TOKEN_2.strip()}"}
     r2 = requests.get(url, headers=headers2)
-    if r.status_code != 200:
-        return [f"Error {r.status_code}: {r.text}"]
+    if r2.status_code != 200:
+        return [f"Error {r2.status_code}: {r2.text}"]
 
-    events2 = r.json()
-    print(events2)
+    events2 = r2.json()
     for e in events2:
-        # Event title
         title = e.get("title", "Untitled Event")
-        # Course/Class name (context_name)
         course = e.get("context_name", "Unknown Course")
-        # Due date formatted
         due = e.get("start_at")
         if due:
             due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
-            due_fmt = due_dt.strftime("%B %d, %Y")  # e.g., August 21, 2025
+            due_fmt = due_dt.strftime("%B %d, %Y")
         else:
             due_fmt = "No due date"
-        if f"📌 **{title}** — **{course}** — due {due_fmt}" not in assignments:
-            assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
-    
+        formatted = f"📌 **{title}** — **{course}** — due {due_fmt}"
+        if formatted not in assignments:  # avoid duplicates
+            assignments.append(formatted)
+
     return assignments if assignments else ["No upcoming events found."]
 
 # ------------------- Manual command -------------------
@@ -102,5 +91,3 @@ async def on_ready():
 
 # ------------------- Run bot -------------------
 bot.run(DISCORD_TOKEN.strip())
-
-
