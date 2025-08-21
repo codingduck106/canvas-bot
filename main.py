@@ -70,6 +70,7 @@ def get_upcoming_events():
         return [f"Error {r.status_code}: {r.text}"]
 
     events2 = r.json()
+    print(events2)
     for e in events2:
         # Event title
         title = e.get("title", "Untitled Event")
@@ -101,4 +102,5 @@ async def on_ready():
 
 # ------------------- Run bot -------------------
 bot.run(DISCORD_TOKEN.strip())
+
 
