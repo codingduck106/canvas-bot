@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import threading, os
 from flask import Flask
 from datetime import datetime
+from collections import defaultdict
 
 # ------------------- Keep-alive server -------------------
 app = Flask("keepalive")
@@ -38,21 +39,21 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ------------------- Fetch upcoming events from Canvas -------------------
 def get_upcoming_events():
     url = f"https://{CANVAS_DOMAIN}/api/v1/users/self/upcoming_events"
-    assignments = []
     seen_ids = set()
+    events_by_course = defaultdict(list)
 
     for token in CANVAS_TOKENS:
         headers = {"Authorization": f"Bearer {token.strip()}"}
         r = requests.get(url, headers=headers)
 
         if r.status_code != 200:
-            assignments.append(f"⚠️ Error {r.status_code} for one account: {r.text}")
+            events_by_course["⚠️ Errors"].append(f"Error {r.status_code}: {r.text}")
             continue
 
         events = r.json()
         for e in events:
             event_id = e.get("id")
-            if event_id in seen_ids:  # skip duplicates
+            if event_id in seen_ids:
                 continue
             seen_ids.add(event_id)
 
@@ -65,16 +66,28 @@ def get_upcoming_events():
             else:
                 due_fmt = "No due date"
 
-            assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
+            events_by_course[course].append(f"• {title} — due {due_fmt}")
 
-    return assignments if assignments else ["No upcoming events found."]
+    return events_by_course if events_by_course else None
 
 # ------------------- Manual command -------------------
 @bot.command()
 async def due(ctx):
-    """Check upcoming assignments/events"""
-    assignments = get_upcoming_events()
-    await ctx.send("\n".join(assignments))
+    """Check upcoming assignments/events, grouped by course"""
+    events_by_course = get_upcoming_events()
+
+    if not events_by_course:
+        await ctx.send("✅ No upcoming events found.")
+        return
+
+    # Build a nice formatted message
+    lines = []
+    for course, events in events_by_course.items():
+        lines.append(f"📚 **{course}**")
+        lines.extend(events)
+        lines.append("")  # blank line between courses
+
+    await ctx.send("\n".join(lines))
 
 # ------------------- On ready -------------------
 @bot.event
