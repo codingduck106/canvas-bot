@@ -22,9 +22,13 @@ threading.Thread(target=run).start()
 # ------------------- Load secrets -------------------
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-CANVAS_TOKEN_1 = os.getenv("CANVAS_TOKEN_1")
-CANVAS_TOKEN_2 = os.getenv("CANVAS_TOKEN_2")
 CANVAS_DOMAIN = os.getenv("CANVAS_DOMAIN")  # e.g. yourschool.instructure.com
+
+# Grab all CANVAS_TOKEN_x from env
+CANVAS_TOKENS = [
+    v for k, v in os.environ.items()
+    if k.startswith("CANVAS_TOKEN") and v.strip()
+]
 
 # ------------------- Discord bot setup -------------------
 intents = discord.Intents.default()
@@ -34,46 +38,34 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ------------------- Fetch upcoming events from Canvas -------------------
 def get_upcoming_events():
     url = f"https://{CANVAS_DOMAIN}/api/v1/users/self/upcoming_events"
-
     assignments = []
+    seen_ids = set()
 
-    # --------- First token cycle ---------
-    headers1 = {"Authorization": f"Bearer {CANVAS_TOKEN_1.strip()}"}
-    r1 = requests.get(url, headers=headers1)
-    if r1.status_code != 200:
-        return [f"Error {r1.status_code}: {r1.text}"]
+    for token in CANVAS_TOKENS:
+        headers = {"Authorization": f"Bearer {token.strip()}"}
+        r = requests.get(url, headers=headers)
 
-    events1 = r1.json()
-    for e in events1:
-        title = e.get("title", "Untitled Event")
-        course = e.get("context_name", "Unknown Course")
-        due = e.get("start_at")
-        if due:
-            due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
-            due_fmt = due_dt.strftime("%B %d, %Y")
-        else:
-            due_fmt = "No due date"
-        assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
+        if r.status_code != 200:
+            assignments.append(f"⚠️ Error {r.status_code} for one account: {r.text}")
+            continue
 
-    # --------- Second token cycle ---------
-    headers2 = {"Authorization": f"Bearer {CANVAS_TOKEN_2.strip()}"}
-    r2 = requests.get(url, headers=headers2)
-    if r2.status_code != 200:
-        return [f"Error {r2.status_code}: {r2.text}"]
+        events = r.json()
+        for e in events:
+            event_id = e.get("id")
+            if event_id in seen_ids:  # skip duplicates
+                continue
+            seen_ids.add(event_id)
 
-    events2 = r2.json()
-    for e in events2:
-        title = e.get("title", "Untitled Event")
-        course = e.get("context_name", "Unknown Course")
-        due = e.get("start_at")
-        if due:
-            due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
-            due_fmt = due_dt.strftime("%B %d, %Y")
-        else:
-            due_fmt = "No due date"
-        formatted = f"📌 **{title}** — **{course}** — due {due_fmt}"
-        if formatted not in assignments:  # avoid duplicates
-            assignments.append(formatted)
+            title = e.get("title", "Untitled Event")
+            course = e.get("context_name", "Unknown Course")
+            due = e.get("start_at")
+            if due:
+                due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
+                due_fmt = due_dt.strftime("%B %d, %Y")
+            else:
+                due_fmt = "No due date"
+
+            assignments.append(f"📌 **{title}** — **{course}** — due {due_fmt}")
 
     return assignments if assignments else ["No upcoming events found."]
 
